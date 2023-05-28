@@ -55,7 +55,7 @@ class NiniSiteForumCrawler:
         }
         return parsed_topic
     
-    def crawl_topics_in_forum(self, starting_page=1, number_pages=10):
+    def crawl_topics_in_forum(self, starting_page, number_pages):
         """
         Crawls topics in the forum and returns a DataFrame with the topic data.
 
@@ -140,36 +140,36 @@ class NinisiteTopicCrawler():
         }
         return comment_detail
 
-def crawl_comments_in_topic(self, save_topic_detail=True, save_topic_comments=True):
-    """
-    Crawls all comments in the topic and returns a DataFrame containing the comment data.
+    def crawl_comments_in_topic(self, save_topic_detail=True, save_topic_comments=True,folder_path=""):
+        """
+        Crawls all comments in the topic and returns a DataFrame containing the comment data.
 
-    Args:
-        save_topic_detail (bool, optional): Whether to save the topic detail as a CSV file. Defaults to True.
-        save_topic_comments (bool, optional): Whether to save the topic comments as a CSV file. Defaults to True.
+        Args:
+            save_topic_detail (bool, optional): Whether to save the topic detail as a CSV file. Defaults to True.
+            save_topic_comments (bool, optional): Whether to save the topic comments as a CSV file. Defaults to True.
 
-    Returns:
-        pd.DataFrame: DataFrame containing the comment data.
-    """
-    self.topic_parser()
+        Returns:
+            pd.DataFrame: DataFrame containing the comment data.
+        """
+        self.topic_parser()
 
-    if save_topic_detail:
-        pd.DataFrame(self.topic_detail, index=['topic_main']).to_csv(f'{self.topic_id}_main_post.csv')
+        if save_topic_detail:
+                pd.DataFrame(self.topic_detail, index=[f'{self.topic_id}']).to_csv(f'{folder_path}\\{self.topic_id}_main_post.csv')
 
-    comments_data = []
-    with tqdm(total=20 * len(range(1, self.topic_detail['number_pages'] + 1))) as pbar:
-        for pg_number in range(1, self.topic_detail['number_pages'] + 1):
-            html = requests.get(self.topic_link + f'?page={pg_number}').text
-            soup = BeautifulSoup(html, 'html.parser')
-            self.comments = soup.find_all('article', class_='topic-post')
-            for comment in self.comments[1:]:
-                comments_data.append(self.comment_parser(comment))
-                pbar.update(1)
-                time.sleep(1.5 / 20)
+        comments_data = []
+        with tqdm(total=20 * len(range(1, self.topic_detail['number_pages'] + 1))) as pbar:
+            for pg_number in range(1, self.topic_detail['number_pages'] + 1):
+                html = requests.get(self.topic_link + f'?page={pg_number}').text
+                soup = BeautifulSoup(html, 'html.parser')
+                self.comments = soup.find_all('article', class_='topic-post')
+                for comment in self.comments[1:]:
+                    comments_data.append(self.comment_parser(comment))
+                    pbar.update(1)
+                    time.sleep(1.5 / 20)
 
-    topic_comments = pd.DataFrame(comments_data)
-    if save_topic_comments:
-        topic_comments.to_csv(f'{self.topic_id}_comments.csv')
+        topic_comments = pd.DataFrame(comments_data)
+        if save_topic_comments:
+            topic_comments.to_csv(f"{folder_path}\\{self.topic_id}_comments.csv")
 
-    return pd.DataFrame(comments_data)
+        return pd.DataFrame(comments_data)
 
