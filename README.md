@@ -12,6 +12,7 @@ ninisite_crawler/        the Python package
 ├── topic.py             TopicCrawler: opening post and comments of one topic
 ├── pipeline.py          resumable bulk jobs: crawl_forum, crawl_comments, load_crawled, shard
 ├── data.py              load_topics: load the datasets in data/
+├── search.py            search_topics: Persian-aware keyword search
 └── http.py              shared HTTP session (retries, timeouts, rate limiting)
 data/topics/             crawled topic lists, one .csv.gz per forum (see data/README.md)
 notebooks/quickstart.ipynb   walkthrough you can run in Colab
@@ -59,6 +60,18 @@ forum = nc.ForumCrawler(139)
 forum.num_pages()
 new_topics = forum.crawl(start_page=1, end_page=5)
 ```
+
+### Keyword search
+
+```python
+hits = nc.search_topics(topics, ["خیانت", "طلاق"])                 # titles with any keyword
+hits = nc.search_topics(topics, ["شوهرم", "خیانت"], match="all")   # titles with every keyword
+hits = nc.search_topics(topics, "خیانت", exclude=["فیلم", "سریال"], whole_word=True)
+```
+
+Matching treats Arabic and Persian letter variants (ي/ی, ك/ک), half-spaces, diacritics and Persian digits as equivalent. The result has a `matched_keywords` column. Pass `columns="text"` to search crawled comments.
+
+The [quickstart notebook](notebooks/quickstart.ipynb) also uses two Claude API prompts to find every topic on a subject. The first turns the subject into Persian search keywords. The second checks the matching titles for relevance. The output is a JSON file of topics and topic IDs.
 
 ### Bulk, resumable crawls
 
