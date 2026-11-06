@@ -1,47 +1,87 @@
 # NiniSite Crawler
 
-This repository contains a web crawler for the NiniSite forums. It allows you to crawl topics and comments from specific forums and topics on the NiniSite website (https://www.ninisite.com).
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Akhorramrouz/ninisite_crawler/blob/main/notebooks/quickstart.ipynb)
+
+A Python package for crawling topics and comments from the [NiniSite](https://www.ninisite.com) discussion forums, plus the topic datasets already crawled from two forums.
+
+## Repository layout
+
+```
+ninisite_crawler/        the Python package
+├── forum.py             ForumCrawler: topic listings of a forum
+├── topic.py             TopicCrawler: opening post and comments of one topic
+├── pipeline.py          resumable bulk jobs: crawl_forum, crawl_comments, load_crawled, shard
+├── data.py              load_topics: load the datasets in data/
+└── http.py              shared HTTP session (retries, timeouts, rate limiting)
+data/topics/             crawled topic lists, one .csv.gz per forum (see data/README.md)
+notebooks/quickstart.ipynb   walkthrough you can run in Colab
+```
 
 ## Installation
 
-To use this crawler, you need to have Python installed on your system. Clone this repository and install the required dependencies using the following command:
+**Google Colab / any notebook (clone):**
 
+```python
+!git clone --depth 1 https://github.com/Akhorramrouz/ninisite_crawler.git
+%cd ninisite_crawler
+%pip install -q -r requirements.txt
+
+import ninisite_crawler as nc
 ```
-pip install -r requirements.txt
+
+**pip install (package only, no clone):**
+
+```bash
+pip install git+https://github.com/Akhorramrouz/ninisite_crawler.git
+```
+
+When the repo isn't cloned, `load_topics()` downloads the datasets from GitHub.
+
+**Local development:**
+
+```bash
+git clone --depth 1 https://github.com/Akhorramrouz/ninisite_crawler.git && cd ninisite_crawler && pip install -e .
 ```
 
 ## Usage
 
-### NinisiteTopicCrawler
-
-The `NinisiteTopicCrawler` class allows you to crawl comments from a specific topic on NiniSite. Here's an example of how to use it:
-
 ```python
-crawler = NinisiteTopicCrawler(topic_id)
-comments_df = crawler.crawl_comments_in_topic()
+import ninisite_crawler as nc
+
+# Topic datasets in the repo (139 = spouse, 141 = problem_solution)
+topics = nc.load_topics(139)
+
+# One topic: opening post (dict) + comments (DataFrame)
+post, comments = nc.TopicCrawler(11176867).crawl()
+
+# Listing pages of a forum (end_page is inclusive; None = last page)
+forum = nc.ForumCrawler(139)
+forum.num_pages()
+new_topics = forum.crawl(start_page=1, end_page=5)
 ```
 
-Replace `topic_id` with the ID of the topic you want to crawl. The `crawl_comments_in_topic` method returns a Pandas DataFrame containing the crawled comments.
+### Bulk, resumable crawls
 
-### NiniSiteForumCrawler
-
-The `NiniSiteForumCrawler` class allows you to crawl topics from a specific forum on NiniSite. Here's an example of how to use it:
+These jobs write small files as they go and skip whatever is already on disk. If a run is interrupted (for example a Colab timeout), rerun it to continue. On Colab, point `out_dir` at Google Drive.
 
 ```python
-crawler = NiniSiteForumCrawler(forum_number)
-topics_df = crawler.crawl_topics_in_forum(starting_page, number_pages)
+# A forum's whole topic list, saved in batches of 25 pages
+all_topics = nc.crawl_forum(139, "output/forum_139", start_page=1, end_page=None)
+
+# Comments for one shard (here 1 of 10) of the topic list
+ids = nc.shard(topics.topic_id, index=0, num_shards=10)
+nc.crawl_comments(ids, "output/comments_139_shard_0")   # failures go to failed.csv
+posts, comments = nc.load_crawled("output/comments_139_shard_0")
 ```
 
-Replace `forum_number` with the number of the forum you want to crawl. The optional parameters `starting_page` and `number_pages` allow you to specify the starting page and the number of pages to crawl (default values: starting_page=1, number_pages=10). The `crawl_topics_in_forum` method returns a Pandas DataFrame containing the crawled topics.
+Every crawler accepts `delay=` (seconds between requests, default `0.5`). Please keep it polite.
+
+Column descriptions for every dataset are in [data/README.md](data/README.md).
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+MIT. See [LICENSE](LICENSE).
 
 ## Acknowledgments
 
-This crawler was developed as a part of a project and is not affiliated with or endorsed by NiniSite.
+This crawler was developed as part of a research project and is not affiliated with or endorsed by NiniSite.
